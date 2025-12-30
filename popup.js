@@ -5,11 +5,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ext-export').addEventListener('click', handleExportClick);
 });
 
-const extStatus = document.getElementById('ext-status');
 chrome.runtime.onMessage.addListener((msg) => {
     setStatus(msg.message, msg.type);
-    if (msg.stack) console.trace("popup.js:", msg.stack);
+    if (msg.action === 'exportDone') {
+        const loadingSpinner = document.getElementById('ext-loadingSpinner');
+        loadingSpinner.style.display = 'none';
+    }
 });
+
+// requires `popup.js` to be loaded after 'ext-status' div
+const extStatus = document.getElementById('ext-status');
+
 function setStatus(msg, type) {
     extStatus.classList.remove('ext-status--error', 'ext-status--warning');
     switch (type) {
@@ -35,11 +41,19 @@ async function handleExportClick() {
 
     const loadingSpinner = document.getElementById('ext-loadingSpinner');
     loadingSpinner.style.display = 'block';
+
+    const isExportToExcel = document.querySelector('#ext-xlsxCheckbox').checked;
+    await chrome.storage.local.set({ isExportToExcel });
+
+    const jsFiles = ['exportToCSV.js'];
+    if (isExportToExcel) {
+        //jsFiles.unshift('xlsx.mini.min.js'); // SheetJS
+        jsFiles.unshift('exceljs.min.js');
+    }
     await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['exportToCSV.js']
+        files: jsFiles
     });
-    loadingSpinner.style.display = 'none';
 
     if (chrome.runtime.lastError) {
         setStatus(`Chrome API error: ${chrome.runtime.lastError.message}`, 'error');

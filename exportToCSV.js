@@ -21,19 +21,27 @@ try {
 }
 async function main() {
     const result = await mainExport();
-    if (result) {
+    if (!result) {
+        sendStatusToPopup("No jobs found", 'warning', 'exportDone');
+        return;
+    }
+
+    const { isExportToExcel } = await chrome.storage.local.get('isExportToExcel');
+    if (isExportToExcel) {
+        //downloadXLSX(result);
+        downloadExcelJS(result);
+    } else {
         const csv = convertToCSV(result);
         downloadCSV(csv);
-        sendStatusToPopup(`Done. Exported ${result.length} jobs`);
-    } else {
-        sendStatusToPopup("No jobs found", 'warning');
     }
+    sendStatusToPopup(`Done. Exported ${result.length} jobs`, '', 'exportDone');
 }
 
-function sendStatusToPopup(msg, type) {
+function sendStatusToPopup(msg, type, action) {
     chrome.runtime.sendMessage({
+        message: msg,
         type: type,
-        message: msg
+        action: action
     });
 }
 
@@ -59,16 +67,6 @@ async function mainExport() {
             debug("No enabled 'Next' button found, ending pagination");
             break;
         }
-
-        const currentCards = Array.from(document.querySelectorAll('ul[role="list"] > li'));
-        const currentUrls = new Set(
-            currentCards.map(card => {
-                const link = card.querySelector('a[href*="/jobs/view/"]');
-                return link?.href || '';
-            }).filter(Boolean)
-        );
-        debug(`Current page has ${currentUrls.size} saved job URLs`);
-
         nextButton.click();
 
         try {
@@ -82,7 +80,7 @@ async function mainExport() {
     if (pageNum >= CONFIG.MAX_PAGES) {
         debug(`Reached safety limit of ${CONFIG.MAX_PAGES} pages`);
     }
-    
+
     debug(`Extract done. Total jobs: ${allJobs.length}`);
     return allJobs;
 }
@@ -92,7 +90,7 @@ function extractJobs() {
     const jobs = [];
 
     const jobCards = document.querySelectorAll('ul[role="list"] > li');
-    debug(`Found ${jobCards.length} saved job card containers`);
+    debug(`Found ${jobCards.length} saved job cards`);
 
     jobCards.forEach((card, idx) => {
         jobNum++;
@@ -107,13 +105,14 @@ function extractJobs() {
         debug(`Card ${idx + 1}: Found link - ${jobTitleLink.href}`);
 
         const jobTitleText = jobTitleLink.innerText
+            .replace(/\s*, Verified/g, '')
             .replace(/\s+/g, ' ')
             .trim();
 
         debug(`Found title via link: "${jobTitleText}"`);
 
         const textDivs = card.querySelectorAll('div[class*="t-14"]');
-        debug(`Found ${textDivs.length} divs with class*="t-14"`);
+        debug(`Found ${textDivs.length} divs with [class*="t-14"]`);
 
         let companyText = '';
         let locationText = '';
@@ -129,6 +128,8 @@ function extractJobs() {
                 locationText = text;
                 debug(`Found location: ${locationText}`);
             }
+
+            // TODO: connections
         });
 
         if (jobTitleText) {
@@ -151,7 +152,8 @@ function extractJobs() {
 
 async function waitForNextButton(maxWait = CONFIG.PAGE_LOAD_TIMEOUT_MS) {
     const sleep = () => new Promise(resolve => setTimeout(resolve, CONFIG.PAGE_CHANGE_WAIT_MS));
-    const getPageState = () => document.querySelector('.artdeco-pagination__page-state')?.textContent.trim();
+    const getPageState = () => document.querySelector('.artdeco-pagination__page-state')?.
+        textContent.trim();
     const oldPageState = getPageState();
 
     const startTime = Date.now();
@@ -194,14 +196,108 @@ function escapeCSV(str) {
     return str;
 }
 
-function downloadCSV(csv) {
-    const blob = new Blob([csv], { type: 'text/csv' });
+function getFilename() {
+    const d = new Date();
+    const pad = (num) => num.toString().padStart(2, '0');
+    const datetime = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+        + ` ${pad(d.getHours())}${pad(d.getMinutes())}`;
+    return `Saved Jobs ${datetime}`;
+}
+
+function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `linkedin_saved_jobs_${Date.now()}.csv`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+}
+function downloadCSV(csv) {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    downloadBlob(blob, `${getFilename()}.csv`);
+}
+
+// Not used (SheetJS), see `downloadExcelJS()`
+function downloadXLSX(jobs) {
+    // Using SheetJS
+    const jsonJobs = jobs.map(job => ({
+        'Index': job.jobNumber,
+        'Company': job.company,
+        'Location': job.location,
+        'Title': job.title,
+        // 'URL': { t: type, v: display_value, l: link_object }
+        'URL': {
+            t: 's',
+            v: "Link", // job.url,
+            l: { Target: job.url, Tooltip: `${job.url}` }
+        }
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(jsonJobs);
+    worksheet['!cols'] = [
+        { wch: 8 },  // Index
+        { wch: 24 }, // Company
+        { wch: 32 }, // Location
+        { wch: 48 }, // Title
+        { wch: 8 }   // URL
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Saved Jobs");
+    XLSX.writeFile(workbook, `${getFilename()}.xlsx`);
+}
+
+async function downloadExcelJS(jobs) {
+    // Using ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Saved Jobs');
+
+    const rows = jobs.map(job => [
+        job.jobNumber,
+        job.company,
+        job.location,
+        job.title,
+        { text: 'Open Link', hyperlink: job.url, tooltip: job.url }
+    ]);
+
+    sheet.addTable({
+        name: 'JobsTable',
+        ref: 'A1',
+        headerRow: true,
+        style: {
+            theme: 'TableStyleDark9',
+            showRowStripes: true,
+        },
+        columns: [
+            { name: 'Index' },
+            { name: 'Company' },
+            { name: 'Location' },
+            { name: 'Title' },
+            { name: 'URL' }
+        ],
+        rows: rows,
+    });
+
+    const colWidths = [8, 24, 32, 48, 16];
+    sheet.columns.forEach((col, i) => {
+        col.width = colWidths[i];
+    });
+
+    // blue underline font
+    sheet.getColumn(5).eachCell((cell) => {
+        if (cell.value && cell.value.hyperlink) {
+            cell.font = {
+                color: { argb: 'FF0000FF' },
+                underline: true
+            };
+        }
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
+    downloadBlob(blob, `${getFilename()}.xlsx`);
 }
 
 // end IIFE

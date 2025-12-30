@@ -5,7 +5,8 @@
     "description": "Export LinkedIn Saved Jobs to CSV",
     "permissions": [
         "activeTab",
-        "scripting"
+        "scripting",
+        "storage"
     ],
     "action": {
         "default_title": "LinkedIn Jobs to CSV",
