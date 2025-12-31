@@ -128,26 +128,67 @@ function extractJobs() {
                 locationText = text;
                 debug(`Found location: ${locationText}`);
             }
-
-            // TODO: connections
         });
+
+        const comopanySlug = getCompanySlug(card, companyText);
+        const companyUrl = `https://www.linkedin.com/company/${comopanySlug}`;
+        const insightText = card.querySelector('.reusable-search-simple-insight__text-container span').innerText.trim();
+        const insightValue = getInsightValue(insightText);
+        debug(`(Page ${pageNum+1}) insightValue: ${insightValue}, companySlug: ${comopanySlug}`);
 
         if (jobTitleText) {
             jobs.push({
                 jobNumber: jobNum.toString(),
-                title: jobTitleText,
                 company: companyText || '',
                 location: locationText || '',
-                url: jobTitleLink.href || ''
+                title: jobTitleText || '',
+                companySlug: comopanySlug || '',
+                companyUrl: companyUrl || '',
+                url: jobTitleLink.href || '',
+                insight: insightValue.toString() || ''
             });
             debug(`[x] Extracted job: ${jobTitleText}`);
         }
     });
 
     debug(`Total jobs extracted: ${jobs.length}`);
-
     debug("... extractJobs() end");
     return jobs;
+}
+
+function getCompanySlug(card, companyText) {
+    const companyTextFromAlt = card.querySelector('.ivm-view-attr__img--centered').getAttribute('alt').trim();
+    const normTextFromAlt = companyTextFromAlt.toLowerCase().replace(/[^\w]/g, '');
+    const normText = companyText.toLowerCase().replace(/[^\w]/g, '');
+    if (normTextFromAlt !== normText) {
+        sendStatusToPopup(`"${normText}" !== "${normTextFromAlt}"`, 'warning');
+        debug(`[warn] (Page ${pageNum+1}) Mismatch: Alt("${normTextFromAlt}") !== Text("${normText}")`);
+    }
+    const companySlug = companyText
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '') // remove ! and ' etc
+        .replace(/\s+/g, '-');
+        //.replace(/-+/g, '-'); // for " - " etc
+    return companySlug;
+}
+
+function getInsightValue(str) {
+    if (!str) return -2;
+    if (str.startsWith("Actively reviewing applicants")) return 0;
+    if (str.startsWith("No longer accepting applications")) return -1;
+
+    const timeMatch = str.match(/Posted\s+(\d+)([mwdh])\s+ago/);
+    if (!timeMatch) return -2;
+
+    const value = parseInt(timeMatch[1], 10);
+    const unit = timeMatch[2];
+    switch (unit) {
+        case 'm': return 30 * value;
+        case 'w': return 7 * value;
+        case 'd': return value;
+        case 'h': return 0.5;
+    }
+    return -2;
 }
 
 async function waitForNextButton(maxWait = CONFIG.PAGE_LOAD_TIMEOUT_MS) {
@@ -177,13 +218,18 @@ async function waitForNextButton(maxWait = CONFIG.PAGE_LOAD_TIMEOUT_MS) {
 }
 
 function convertToCSV(jobs) {
-    const headers = ['Index', 'Title', 'Company', 'Location', 'URL'];
+    const headers = [
+        'Index', 'Company', 'Location', 'Title',
+        'Company Link', 'Job Link', 'Posted days'
+    ];
     const rows = jobs.map(job => [
         escapeCSV(job.jobNumber),
         escapeCSV(job.company),
         escapeCSV(job.location),
         escapeCSV(job.title),
-        escapeCSV(job.url)
+        escapeCSV(job.companyUrl),
+        escapeCSV(job.url),
+        escapeCSV(job.insight)
     ]);
 
     return [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -226,11 +272,17 @@ function downloadXLSX(jobs) {
         'Location': job.location,
         'Title': job.title,
         // 'URL': { t: type, v: display_value, l: link_object }
-        'URL': {
+        'Company Link': {
             t: 's',
-            v: "Link", // job.url,
+            v: job.companySlug, // job.companyUrl,
+            l: { Target: job.companyUrl, Tooltip: `${job.companyUrl}` }
+        },
+        'Job Link': {
+            t: 's',
+            v: "Open Job Link", // job.url,
             l: { Target: job.url, Tooltip: `${job.url}` }
-        }
+        },
+        'Posted days': job.insight
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(jsonJobs);
@@ -239,7 +291,9 @@ function downloadXLSX(jobs) {
         { wch: 24 }, // Company
         { wch: 32 }, // Location
         { wch: 48 }, // Title
-        { wch: 8 }   // URL
+        { wch: 24 }, // Company Link
+        { wch: 16 }, // Job Link
+        { wch: 8 }   // Posted days
     ];
 
     const workbook = XLSX.utils.book_new();
@@ -257,10 +311,12 @@ async function downloadExcelJS(jobs) {
         job.company,
         job.location,
         job.title,
-        { text: 'Open Link', hyperlink: job.url, tooltip: job.url }
+        { text: job.companySlug, hyperlink: job.companyUrl, tooltip: job.companyUrl },
+        { text: 'Open Job Link', hyperlink: job.url, tooltip: job.url },
+        job.insight
     ]);
 
-    sheet.addTable({
+    const table = sheet.addTable({
         name: 'JobsTable',
         ref: 'A1',
         headerRow: true,
@@ -269,28 +325,33 @@ async function downloadExcelJS(jobs) {
             showRowStripes: true,
         },
         columns: [
-            { name: 'Index' },
-            { name: 'Company' },
-            { name: 'Location' },
+            { name: 'Index', filterButton: true },
+            { name: 'Company', filterButton: true },
+            { name: 'Location', filterButton: true },
             { name: 'Title' },
-            { name: 'URL' }
+            { name: 'Company Link' },
+            { name: 'Job Link' },
+            { name: 'Posted days', filterButton: true },
         ],
-        rows: rows,
+        rows: rows
     });
+    //table.commit();
+    //sheet.autoFilter = { from: 'A1', to: 'G1' };
 
-    const colWidths = [8, 24, 32, 48, 16];
+    const colWidths = [8, 24, 32, 48, 24, 16, 8];
     sheet.columns.forEach((col, i) => {
         col.width = colWidths[i];
     });
 
     // blue underline font
-    sheet.getColumn(5).eachCell((cell) => {
-        if (cell.value && cell.value.hyperlink) {
+    [5, 6].forEach(colIndex => {
+        sheet.getColumn(colIndex).eachCell((cell) => {
+            if (!cell.value || !cell.value.hyperlink) return;
             cell.font = {
                 color: { argb: 'FF0000FF' },
                 underline: true
             };
-        }
+        });
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
