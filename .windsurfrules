@@ -10,7 +10,7 @@
 
 ## Code Organization & Architecture
 - **IIFE wrapping**: Use `(() => { ... })()` for all injected content scripts to avoid polluting global namespace
-- **Separation of concerns**: 
+- **Separation of concerns**:
   - UI logic in one layer (e.g., popup/view files)
   - Business/domain logic in separate files
   - No business logic in UI event handlers
@@ -64,7 +64,7 @@
       return;
   }
   // ... main logic at base indent level
-  
+
   // Avoid
   if (condition) {
       // ... deeply nested logic
@@ -87,7 +87,7 @@
 
 ## Input Validation & Defensive Programming
 - **Validate at boundaries**: Check inputs at function entry points
-- **Strict validation**: 
+- **Strict validation**:
   - Verify URLs include expected paths, not just domains
   - Check array/object structure before accessing nested properties
   - Validate types when accepting external data
@@ -102,11 +102,11 @@
 - **Avoid mixing callbacks and promises**: Choose one pattern and stick with it
 
 ## Chrome Extension Patterns
-- **Script injection**: 
+- **Script injection**:
   - Use `files:` parameter for non-trivial scripts
   - Use `func:` only for simple one-liners
   - Inject dependencies before main script when needed
-- **Messaging**: 
+- **Messaging**:
   - Include `type` or `action` field for message categorization
   - Handle `chrome.runtime.lastError` in all API callbacks
   - Use `chrome.storage.local` for persisting user preferences
@@ -115,7 +115,7 @@
 - **Error boundaries**: Wrap API callbacks in try-catch or check for errors
 
 ## DOM Interaction (Web Scraping / Content Scripts)
-- **Query selectors**: 
+- **Query selectors**:
   - Prefer semantic selectors (`[role="list"]`, `[aria-label="..."]`) over generated classes
   - Use stable attributes (data-*, id) when available
   - Avoid deeply nested selectors
@@ -135,11 +135,11 @@
 
 ## File Generation & Downloads
 - **Abstract common patterns**: Extract blob download logic if used multiple times
-- **Filename conventions**: 
+- **Filename conventions**:
   - Use descriptive names with timestamps
   - Format: `Description YYYY-MM-DD HHmm.ext`
   - Avoid special characters in filenames
-- **Handle multiple formats**: 
+- **Handle multiple formats**:
   - Structure code to easily add new export formats
   - Use same data structure for all formats
   - Load format-specific libraries conditionally
@@ -186,7 +186,7 @@
 - **Consistent formatting**: Match existing indentation, spacing, brace style
 
 ## Testing & Debugging Considerations
-- **Debug statements**: 
+- **Debug statements**:
   - Gate behind config flag
   - Include context: what's being logged and why
   - Use consistent prefix for filtering

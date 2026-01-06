@@ -10,16 +10,28 @@ chrome.runtime.onMessage.addListener((msg) => {
     setStatus(msg.message, msg.type);
 
     let loadingSpinner;
+    let button;
     if (msg.action === 'exportDone') {
+        button = document.getElementById('ext-exportBtn');
         loadingSpinner = document.getElementById('ext-loadingSpinner-export');
+        showExportedJobs();
     }
     if (msg.action === 'recommendDone') {
+        button = document.getElementById('ext-recommendBtn');
         loadingSpinner = document.getElementById('ext-loadingSpinner-recommend');
     }
+    if (button) button.disabled = true;
     if (loadingSpinner) loadingSpinner.style.display = 'none';
 });
 
-// requires `popup.js` to be loaded after 'ext-status' div
+async function showExportedJobs() {
+    const { exportedJobs } = await chrome.storage.local.get('exportedJobs');
+    if (chrome.storage.local.get('exportedJobs')) {
+        debugger;
+        // TODO: show exportedJobs.length + 'Last updated' datetime + small Clear (Trash) button
+    }
+}
+
 const extStatus = document.getElementById('ext-status');
 
 function setStatus(msg, type) {
@@ -45,6 +57,8 @@ async function handleExportClick() {
         return;
     }
 
+    const button = document.getElementById('ext-exportBtn');
+    button.disabled = true;
     const loadingSpinner = document.getElementById('ext-loadingSpinner-export');
     loadingSpinner.style.display = 'block';
 
@@ -69,7 +83,7 @@ async function handleExportClick() {
 }
 
 async function handleRecommendClick() {
-    setStatus("Analyzing company profile...");
+    setStatus("Gathering job recommendations...");
 
     const JOB_URLS = [
         'https://www.linkedin.com/jobs/collections/',
@@ -80,39 +94,15 @@ async function handleRecommendClick() {
         setStatus("Not a LinkedIn job search page", 'error');
         return;
     }
-/*
-    const [{result: companyUrl}] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => document.querySelector('a[href*="linkedin.com/company/"]')?.href
-    });
-    if (!companyUrl) {
-        setStatus("Company URL not found", 'error');
-        return;
-    }
-*/
+
+    const button = document.getElementById('ext-recommendBtn');
+    button.disabled = true;
     const loadingSpinner = document.getElementById('ext-loadingSpinner-recommend');
     loadingSpinner.style.display = 'block';
 
-    // const { id: newTabId } = await chrome.tabs.create({ url: companyUrl, active: false });
-
-    // // wait for the job posting page to load in new tab
-    // await new Promise(
-    //     /** @param {function(chrome.webNavigation.NavigationDetails): void} resolve */
-    //     (resolve) => {
-    //         /**  @param {chrome.webNavigation.NavigationDetails} details */
-    //         const listener = (details) => {
-    //             if (details.tabId === newTabId && details.frameId === 0) {
-    //                 chrome.webNavigation.onCompleted.removeListener(listener);
-    //                 resolve(details);
-    //             }
-    //         };
-    //         chrome.webNavigation.onCompleted.addListener(listener);
-    //     }
-    // );
-
     try {
         await chrome.scripting.executeScript({
-            target: { tabId: newTabId },
+            target: { tabId: tab.id },
             files: ["recommendJobs.js"]
         });
     } catch (err) {

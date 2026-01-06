@@ -7,7 +7,11 @@ A lightweight Chrome extension that exports your LinkedIn Saved Jobs to CSV form
 - **Automatic Pagination**: Traverses all pages of saved jobs without manual clicking
 - **CSV Export**: Downloads a clean spreadsheet with job details
 
-<img src="https://i.imgur.com/pLOYiH9.jpeg" width="340" alt="Screenshot of Chrome extension">
+<img src="https://i.imgur.com/yxre3sh.png" width="640" alt="Screenshot of exported Excel spreadsheet">
+
+<br>
+
+<img src="https://i.imgur.com/h4TUJnY.gif" width="320" alt="Screen capture of Chrome Extension">
 
 ## Getting Started
 
