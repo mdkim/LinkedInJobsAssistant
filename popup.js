@@ -1,3 +1,5 @@
+const { CONFIG, debug, sendStatusToPopup } = window.__LJ2CSV_UTILS__;
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ext-closePopupBtn').addEventListener('click', () => {
         window.close();
@@ -6,27 +8,72 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ext-recommendBtn').addEventListener('click', handleRecommendClick);
 });
 
-chrome.runtime.onMessage.addListener((msg) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.action === 'open_company_jobs') {
+        openTabAndInject(msg.companyUrl, msg.injectedDivHTML);
+        sendResponse({status: 'ok'});
+        return;
+    }
+
+    if (!['export_done', 'recommend_done'].includes(msg.action)) {
+        sendResponse({ status: 'ignored', message: `action '${msg.action}' not found` });
+        return;
+    }
+
     setStatus(msg.message, msg.type);
 
     let loadingSpinner;
     let button;
-    if (msg.action === 'exportDone') {
+    if (msg.action === 'export_done ') {
         button = document.getElementById('ext-exportBtn');
         loadingSpinner = document.getElementById('ext-loadingSpinner-export');
         showExportedJobs();
     }
-    if (msg.action === 'recommendDone') {
+    if (msg.action === 'recommend_done') {
         button = document.getElementById('ext-recommendBtn');
         loadingSpinner = document.getElementById('ext-loadingSpinner-recommend');
     }
-    if (button) button.disabled = true;
+    if (button) button.disabled = false;
     if (loadingSpinner) loadingSpinner.style.display = 'none';
+
+    sendResponse({status: 'ok'});
+});
+
+const pendingTabs = new Map();
+function openTabAndInject(url, injectedDivHTML) {
+    chrome.tabs.create({ url, active: false })
+        .then(mewTab => {
+            pendingTabs.set(mewTab.id, { injectedDivHTML });
+        }).catch(
+            err => setStatus(`Error opening new tab: ${err.message}`, 'error')
+        );
+}
+
+chrome.tabs.onUpdated.addListener((tabId, info) => {
+    if (info.status !== 'complete') {
+        //debug(`Tab (${tabId}) updated, but not complete`);
+        return;
+    }
+
+    const { injectedDivHTML } = pendingTabs.get(tabId) || {};
+    if (!injectedDivHTML) {
+        //debug(`Tab (${tabId}) not found in \`pendingTabs\``);
+        return;
+    }
+
+    chrome.tabs.sendMessage(tabId, {
+        action: 'insert_div',
+        divHTML: injectedDivHTML
+    }).catch(err => {
+        setStatus(`'insert_div' in tab (${tabId}) Injection error: ${err.message}`, 'warning');
+    });
+
+   pendingTabs.delete(tabId);
 });
 
 async function showExportedJobs() {
     const { exportedJobs } = await chrome.storage.local.get('exportedJobs');
-    if (chrome.storage.local.get('exportedJobs')) {
+    if (exportedJobs) {
         debugger;
         // TODO: show exportedJobs.length + 'Last updated' datetime + small Clear (Trash) button
     }
@@ -65,7 +112,7 @@ async function handleExportClick() {
     const isExportToExcel = document.querySelector('#ext-xlsxCheckbox').checked;
     await chrome.storage.local.set({ isExportToExcel });
 
-    const jsFiles = ['exportToCSV.js'];
+    const jsFiles = ['utils.js', 'exportToCSV.js'];
     if (isExportToExcel) {
         //jsFiles.unshift('xlsx.mini.min.js'); // SheetJS
         jsFiles.unshift('exceljs.min.js');
@@ -76,7 +123,7 @@ async function handleExportClick() {
             files: jsFiles
         });
     } catch (err) {
-        setStatus("`exportToCSV.js` Injection error: ${err.message}", 'error');
+        setStatus(`'exportToCSV.js' Injection error: ${err.message}`, 'error');
     } finally {
         setChromeAPIErrorStatus();
     }
@@ -103,10 +150,10 @@ async function handleRecommendClick() {
     try {
         await chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            files: ["recommendJobs.js"]
+            files: ['utils.js', 'recommendJobs.js']
         });
     } catch (err) {
-        setStatus("`recommendJobs.js` Injection error: ${err.message}", 'error');
+        setStatus(`'recommendJobs.js' Injection error: ${err.message}`, 'error');
     } finally {
         setChromeAPIErrorStatus();
     }

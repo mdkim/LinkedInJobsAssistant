@@ -1,18 +1,13 @@
 (async () => {
 // IIFE scoped namespace:
 
-const CONFIG = {
-    DEBUG: true,
-    RENDER_SETTLE_COUNT: 2,
-    DEBOUNCE_COUNT: 15,
-    DEBOUNCE_MS: 150
-};
+const { CONFIG, debug, sendStatusToPopup } = window.__LJ2CSV_UTILS__;
 
 // Main
 const start = Date.now();
 await main()
     .then(() => {
-        debug("`recommendJobs.js` execution time:", `${Date.now() - start}ms`);
+        debug(`\`recommendJobs.js\` execution time: ${Date.now() - start}ms`);
     })
     .catch((err) => {
         sendStatusToPopup(err.message, 'error');
@@ -26,22 +21,25 @@ async function main() {
             throw err;
         });
     if (!result) {
-        sendStatusToPopup("No jobs found", 'warning', 'recommendDone');
+        sendStatusToPopup("No jobs found", 'warning', 'recommend_done');
         return;
     }
 
-    sendStatusToPopup(`Done. Exported ${result.length} jobs`, '', 'recommendDone');
+    sendStatusToPopup(`Done. Exported ${result.length} jobs`, '', 'recommend_done');
 }
 
-function sendStatusToPopup(msg, type, action) {
+function sendOpenCompanyJobsToPopup(companyUrl, injectedDivHTML) {
     chrome.runtime.sendMessage({
-        message: msg, type: type, action: action
+        action: 'open_company_jobs',
+        companyUrl,
+        injectedDivHTML
+    }, () => {
+        const lastError = chrome.runtime.lastError;
+        if (!lastError) return;
+        // popup is closed
+        debug(`\`sendOpenCompanyJobsToPopup()\` error: ${lastError.message}`, 'warning');
     });
-}
-
-function debug(...args) {
-    if (CONFIG.DEBUG) console.info('[lj2csv]', ...args);
-}
+};
 
 async function mainRecommend() {
     const topDivs = document.querySelectorAll(
@@ -58,7 +56,7 @@ async function mainRecommend() {
         debug(result);
 
         topDiv.dispatchEvent(
-            new PointerEvent("click", { bubbles: true })
+            new PointerEvent('click', { bubbles: true })
         );
         debug("Job card click dispatched");
 
@@ -69,8 +67,21 @@ async function mainRecommend() {
             });
         const text = currSpan.textContent.trim();
 
-        debug(`Pushing text: ${text.slice(0, 100)} ...\n... ${text.slice(-100)}`);
+        // TODO: construct injectedDivHTML
+        const tempText = `${text.slice(0, 100)} ...\n... ${text.slice(-100)}`
+        const href = document
+            .querySelector('[data-testid="lazy-column"] a[href*="linkedin.com/company/"]')
+            .href;
+        const companyUrl = href.replace(/\/[\w-]+\/?$/, '/jobs/');
+        debug(`Pushing text: ${tempText}`);
         results.push(result);
+        const injectedDivHTML = `<div>${tempText}<br>${JSON.stringify(result)}</div>`;
+        sendOpenCompanyJobsToPopup(companyUrl, injectedDivHTML);
+
+        // TODO: `break` on closed popup instead of index > 5
+        if (index > 5) {
+            break;
+        }
     }
 
     return results;

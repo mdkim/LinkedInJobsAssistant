@@ -1,12 +1,7 @@
 (async () => {
 // IIFE scoped namespace:
 
-const CONFIG = {
-    DEBUG: true,
-    PAGE_CHANGE_WAIT_MS: 150,
-    PAGE_LOAD_TIMEOUT_MS: 3000,
-    MAX_PAGES: 50
-};
+const { CONFIG, debug, sendStatusToPopup } = window.__LJ2CSV_UTILS__;
 
 const allJobs = [];
 let pageNum = 0;
@@ -16,7 +11,7 @@ let jobNum = 0;
 const start = Date.now();
 await main()
     .then(() => {
-        debug("`exportToCSV.js` execution time:", `${Date.now() - start}ms`);
+        debug(`\`exportToCSV.js\` execution time: ${Date.now() - start}ms`);
     })
     .catch((err) => {
         sendStatusToPopup(err.message, 'error');
@@ -30,7 +25,7 @@ async function main() {
             throw err;
         });
     if (!result) {
-        sendStatusToPopup("No jobs found", 'warning', 'exportDone');
+        sendStatusToPopup("No jobs found", 'warning', 'export_done ');
         return;
     }
 
@@ -40,19 +35,9 @@ async function main() {
         await downloadExcelJS(result); // ExcelJS
     } else {
         const csv = convertToCSV(result);
-        await downloadCSV(csv);
+        downloadCSV(csv);
     }
-    sendStatusToPopup(`Done. Exported ${result.length} jobs`, '', 'exportDone');
-}
-
-function sendStatusToPopup(msg, type, action) {
-    chrome.runtime.sendMessage({
-        message: msg, type: type, action: action
-    });
-}
-
-function debug(...args) {
-    if (CONFIG.DEBUG) console.info('[lj2csv]', ...args);
+    sendStatusToPopup(`Done. Exported ${result.length} jobs`, '', 'export_done ');
 }
 
 async function mainExport() {
