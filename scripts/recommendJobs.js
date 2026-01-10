@@ -28,16 +28,17 @@ async function main() {
     sendStatusToPopup(`Done. Exported ${result.length} jobs`, '', 'recommend_done');
 }
 
-function sendOpenCompanyJobsToPopup(companyUrl, injectedDivHTML) {
+function sendOpenCompanyJobsToPopup(companyUrl, injectedDivHTML, cbPopupOpen) {
     chrome.runtime.sendMessage({
-        action: 'open_company_jobs',
-        companyUrl,
-        injectedDivHTML
+        action: 'open_company_jobs', companyUrl, injectedDivHTML
     }, () => {
         const lastError = chrome.runtime.lastError;
-        if (!lastError) return;
-        // popup is closed
-        debug(`\`sendOpenCompanyJobsToPopup()\` error: ${lastError.message}`, 'warning');
+        if (lastError) {
+            debug(`\`sendOpenCompanyJobsToPopup()\` Popup is closed: ${lastError.message}`);
+            cbPopupOpen(false);
+            return;
+        }
+        cbPopupOpen(true);
     });
 };
 
@@ -46,6 +47,7 @@ async function mainRecommend() {
         'div[data-view-name="job-search-job-card"] [role="button"] > div > div'
     );
 
+    let isPopupClosed = false;
     const results = [];
     for (const [index, topDiv] of Array.from(topDivs).entries()) {
         const paragraphs = Array.from(topDiv.querySelectorAll('p'))
@@ -76,12 +78,11 @@ async function mainRecommend() {
         debug(`Pushing text: ${tempText}`);
         results.push(result);
         const injectedDivHTML = `<div>${tempText}<br>${JSON.stringify(result)}</div>`;
-        sendOpenCompanyJobsToPopup(companyUrl, injectedDivHTML);
 
-        // TODO: `break` on closed popup instead of index > 5
-        if (index > 5) {
-            break;
-        }
+        sendOpenCompanyJobsToPopup(companyUrl, injectedDivHTML, isPopupOpen => {
+            if (!isPopupOpen) isPopupClosed = true;
+        });
+        if (isPopupClosed) break;
     }
 
     return results;

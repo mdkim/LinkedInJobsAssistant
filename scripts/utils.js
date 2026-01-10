@@ -28,14 +28,15 @@ function debug(msg, level = 'info') {
     }
 }
 
-function sendStatusToPopup(msg, type, action) {
+function sendStatusToPopup(msg, type, action = 'status') {
     chrome.runtime.sendMessage({
-        message: msg, type: type, action: action
+        message: msg,
+        type,
+        action
     }, () => {
         const lastError = chrome.runtime.lastError;
         if (!lastError) return;
-        // popup is closed
-        debug(`\`sendStatusToPopup()\` error: ${lastError.message}`, 'warning');
+        debug(`\`sendStatusToPopup()\` Popup is closed: ${lastError.message}`);
     });
 }
 

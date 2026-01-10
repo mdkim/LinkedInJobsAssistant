@@ -3,20 +3,20 @@
 <head>
   <title>LinkedIn Jobs to CSV</title>
   <link rel="stylesheet" href="popup.css">
-  <!--<script src="xlsx.mini.min.js" defer></script> // SheetJS-->
-  <script src="exceljs.min.js" defer></script>
+  <!--<script src="vendor/xlsx.mini.min.js" defer></script> // SheetJS-->
+  <script src="../vendor/exceljs.min.js" defer></script>
   <!--`popup.js` requires 'ext-status' div to be loaded-->
   <script src="popup.js" defer></script>
-  <script src="utils.js"></script>
+  <script src="../scripts/utils.js"></script>
 </head>
 <body>
   <div class="ext-main">
     <div class="ext-h2">
-      <img src="images/icon48.png">&nbsp;LinkedIn Jobs to CSV
+      <img src="../icons/icon48.png">&nbsp;LinkedIn Jobs to CSV
     </div>
     <div class="ext-buttonRow">
       <button id="ext-exportBtn" class="ext-btn">Export to CSV</button>
-      <img src="images/spinner.gif" alt="Gathering Saved Jobs..." id="ext-loadingSpinner-export" class="ext-loadingSpinner">
+      <img src="../images/spinner.gif" alt="Gathering Saved Jobs..." id="ext-loadingSpinner-export" class="ext-loadingSpinner">
     </div>
     <div class="ext-optionRow">
       <input type="checkbox" id="ext-xlsxCheckbox" checked>
@@ -24,9 +24,9 @@
     </div>
     <div class="ext-buttonRow ext-buttonRow--secondary">
       <button id="ext-recommendBtn" class="ext-btn">Recommend Jobs</button>
-      <img src="images/spinner.gif" alt="Analyzing company profile..." id="ext-loadingSpinner-recommend" class="ext-loadingSpinner">
+      <img src="../images/spinner.gif" alt="Analyzing company profile..." id="ext-loadingSpinner-recommend" class="ext-loadingSpinner">
     </div>
-    <img src="images/close.gif" id="ext-closePopupBtn">
+    <img src="../images/close.gif" id="ext-closePopupBtn">
   </div>
   <div id="ext-status"></div>
 </body>

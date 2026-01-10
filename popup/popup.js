@@ -20,6 +20,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return;
     }
 
+    // msg.action === 'status':
     setStatus(msg.message, msg.type);
 
     let loadingSpinner;
@@ -112,10 +113,10 @@ async function handleExportClick() {
     const isExportToExcel = document.querySelector('#ext-xlsxCheckbox').checked;
     await chrome.storage.local.set({ isExportToExcel });
 
-    const jsFiles = ['utils.js', 'exportToCSV.js'];
+    const jsFiles = ['scripts/utils.js', 'scripts/exportToCSV.js'];
     if (isExportToExcel) {
-        //jsFiles.unshift('xlsx.mini.min.js'); // SheetJS
-        jsFiles.unshift('exceljs.min.js');
+        //jsFiles.unshift('vendor/xlsx.mini.min.js'); // SheetJS
+        jsFiles.unshift('vendor/exceljs.min.js');
     }
     try {
         await chrome.scripting.executeScript({
@@ -150,7 +151,7 @@ async function handleRecommendClick() {
     try {
         await chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            files: ['utils.js', 'recommendJobs.js']
+            files: ['scripts/utils.js', 'scripts/recommendJobs.js']
         });
     } catch (err) {
         setStatus(`'recommendJobs.js' Injection error: ${err.message}`, 'error');
