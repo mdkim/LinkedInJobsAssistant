@@ -35,11 +35,16 @@ async function main() {
 }
 
 async function mainHighlights() {
+    let isSearchPage = false; // for /search-results/ & /view/
+    if (document.querySelector('#job-details .mt4 p[dir]')) {
+        isSearchPage = true; // or for /search/
+    }
+
     // "About the job" span from job panel or standalone job post page
-    const currSpan = document.querySelector(
-        'span[data-testid="expandable-text-box"]'
-    );
-    const aboutTheJobText = currSpan.innerText.trim();
+    const aboutTheJobText = document.querySelector(
+        // selector for /search/, or for /search-results/ & /view/
+        '#job-details .mt4 p[dir], span[data-testid="expandable-text-box"]'
+    ).innerText.trim();
 
     // "About the job" higlights:
     const keywordRegex = new RegExp(`\\b(${higlightSkills.join('|')})`, 'gi');
@@ -56,16 +61,24 @@ async function mainHighlights() {
         })
         .join("\n<br>\n");
 
+    styleMarginAndFontSize = isSearchPage
+        // for /search/
+        ? "margin: 16px 0 0 0; font-size: 0.9em;"
+        // or for /search-results/ & /view/
+        : "margin: 16px 24px 0 24px; font-size: 2.2em;"; /* <body> font-size is 66% */
+// TODO: for /view/ use "margin: 16px ...", for /search-results/ use "margin: 0"
     let injectedDivHTML =
-        `<div id="ext-injected" class="artdeco-entity-lockup--size-5">
+        `<div id="ext-injected">
     <style>
     #ext-injected {
-        margin: 0 24px 24px 24px;
-        padding: 12px 24px 22px 24px;
         border: 2px solid #AA6C39;
         border-radius: 12px;
-        font-size: 2.2em; /* <body> font-size is 66% */
+        padding: 12px 24px 22px 24px;
+
+        /* for 'jobHighlights.js' only: */
+        ${styleMarginAndFontSize}
         line-height: 1.6;
+        background-color: #fff;
     }
     .ext-highlight {
         font-weight: 700;
@@ -86,7 +99,10 @@ async function mainHighlights() {
     }
     </style>`;
 
-    const company = document.querySelector('[aria-label^="Company"]').textContent.trim();
+    const company = (
+        // selector for /search/, or for /search-results/ & /view/
+        document.querySelector('.job-details-jobs-unified-top-card__company-name, [aria-label^="Company"]')
+    ).textContent.trim();
 
     const { exportedJobs } = await chrome.storage.local.get('exportedJobs');
     const savedJobsFromCompanyText = exportedJobs
@@ -101,11 +117,11 @@ async function mainHighlights() {
     </span>
     <span class="ext-font-caption">
     ${savedJobsFromCompanyText}
-    </span>`;
+    </span>
+    <hr class="ext-hr">`;
     }
 
     injectedDivHTML += `
-    <hr class="ext-hr">
     <span class="ext-font-title">
         About the job&nbsp;<em class="ext-font-caption">highlights</em>
         <br>
@@ -118,8 +134,11 @@ async function mainHighlights() {
 
     document.getElementById('ext-injected')?.remove();
 
-    document.querySelector('[aria-label^="Company"]')
-        .closest('[data-display-contents="true"]')
+    // selector for /search/
+    (document.querySelector('.job-details-jobs-unified-top-card__container--two-pane')
+        // or for /search-results/ & /view/
+        || document.querySelector('[aria-label^="Company"]').closest('[data-display-contents="true"]').parentElement
+    )
         .parentElement
         .insertAdjacentHTML('afterend', injectedDivHTML);
 

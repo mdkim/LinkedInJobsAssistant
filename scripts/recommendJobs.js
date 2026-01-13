@@ -133,10 +133,10 @@ async function mainRecommend() {
             `<div id="ext-injected" class="artdeco-entity-lockup--size-5">
     <style>
     #ext-injected {
-        margin: 0 24px 24px 24px;
-        padding: 12px 24px 22px 24px;
         border: 2px solid #AA6C39;
         border-radius: 12px;
+        padding: 12px 24px 22px 24px;
+        margin: 0 24px 24px 24px;
     }
     .ext-highlight {
         font-weight: 700;
@@ -207,7 +207,8 @@ async function spanFromStableJobPanel({
     while (true) {
         debug("Looping in `waitForStableSpan()`");
         const span = document.querySelector(
-            'span[data-testid="expandable-text-box"]'
+            // selector for /search-results/, or for /search/
+            'span[data-testid="expandable-text-box"], #job-details .mt4 p[dir] span'
         );
 
         if (span && span === prevSpan) {
