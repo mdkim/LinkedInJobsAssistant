@@ -32,8 +32,14 @@ function debug(msg, level = 'info') {
         case 'warning':
             console.warn('[lj2csv] [warn]', msg);
             break;
+        case 'validation_warning':
+            console.info('[lj2csv] [validation_warning]', msg);
+            break;
         case 'error':
             console.error('[lj2csv] [error]', msg);
+            break;
+        case 'validation_error':
+            console.info('[lj2csv] [validation_error]', msg);
             break;
     }
 }

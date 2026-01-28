@@ -154,9 +154,17 @@ function setStatus(msg, type) {
             extStatus.classList.add('ext-status--warning');
             debug(msg, 'warning');
             break;
+        case 'validation_warning':
+            extStatus.classList.add('ext-status--warning');
+            debug(msg, 'validation_warning');
+            break;
         case 'error':
             extStatus.classList.add('ext-status--error');
             debug(msg, 'error');
+            break;
+        case 'validation_error':
+            extStatus.classList.add('ext-status--error');
+            debug(msg, 'validation_error');
             break;
     }
     extStatus.textContent = msg;
@@ -169,7 +177,7 @@ async function handleExportClick() {
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab.url.startsWith('https://www.linkedin.com/my-items/saved-jobs/')) {
-        setStatus("Not a LinkedIn Saved Jobs page", 'error');
+        setStatus("Not a LinkedIn Saved Jobs page", 'validation_warning');
         return;
     }
 
@@ -178,9 +186,8 @@ async function handleExportClick() {
     const loadingSpinner = document.getElementById('ext-loadingSpinner-export');
     loadingSpinner.style.display = 'block';
 
-    await chrome.storage.local.set({
-        isExportToExcel: document.getElementById('ext-xlsxCheckbox').checked
-    });
+    const isExportToExcel = document.getElementById('ext-xlsxCheckbox').checked;
+    await chrome.storage.local.set({ isExportToExcel });
 
     const jsFiles = ['scripts/utils.js', 'scripts/exportToCSV.js'];
     if (isExportToExcel) {
@@ -189,7 +196,7 @@ async function handleExportClick() {
     }
     try {
         await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
+            target: { tabId: tab.id, allFrames: true },
             files: jsFiles
         });
     } catch (err) {
@@ -211,7 +218,7 @@ async function handleRecommendClick() {
     ];
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!JOB_URLS.some(prefix => tab.url?.startsWith(prefix))) {
-        setStatus("Not a LinkedIn job search page", 'error');
+        setStatus("Not a LinkedIn job search page", 'validation_warning');
         return;
     }
 
@@ -229,7 +236,7 @@ async function handleRecommendClick() {
 
     try {
         await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
+            target: { tabId: tab.id, allFrames: true },
             files: ['scripts/utils.js', 'scripts/recommendJobs.js']
         });
     } catch (err) {
@@ -252,7 +259,7 @@ async function handleHighlightsClick() {
     ];
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!JOB_URLS.some(prefix => tab.url?.startsWith(prefix))) {
-        setStatus("Not a LinkedIn job post page", 'error');
+        setStatus("Not a LinkedIn job post page", 'validation_warning');
         return;
     }
 

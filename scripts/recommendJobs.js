@@ -21,13 +21,19 @@ await main()
     });
 
 async function main() {
+    if (['https://www.linkedin.com/preload/', 'about:blank'].includes(
+        document.location.href,
+    )) {
+        return; // silently ignore wrong `document` frames
+    }
+
     const result = await mainRecommend()
         .catch((err) => {
             sendStatusToPopup(err.message, 'error');
             throw err;
         });
-    if (!result) {
-        sendStatusToPopup("No jobs found", 'warning', 'recommend_done');
+    if (!result.length) {
+        sendStatusToPopup("No jobs found", '', 'recommend_done');
         return;
     }
 
@@ -62,30 +68,20 @@ async function mainRecommend() {
     let { isStartAtSelectedJob, maxTabsToOpen } = await chrome.storage.local.get(
         ['isStartAtSelectedJob', 'maxTabsToOpen']
     );
-    let isStarted = false;
+
+    let indexStart = getIndexStart(isStartAtSelectedJob, topDivs);
 
     let isPopupClosed = false;
     const companiesDone = new Set();
     const results = [];
-    for (const [index, topDiv] of [...topDivs].entries()) {
-
+    const topDivsSliced = [...topDivs].slice(indexStart);
+    for (const [i, topDiv] of topDivsSliced.entries()) {
         // 'Recommend Jobs' > 'All' is unchecked
-        if (isStartAtSelectedJob) {
-            if (isStarted && results.length >= maxTabsToOpen) {
-                break;
-            }
-            if (!isStarted
-                // for '/search/', '/collections/'
-                && !topDiv.classList.contains('jobs-search-results-list__list-item--active')
-                // for '/search-results/'
-                && !getComputedStyle(topDiv.parentElement.parentElement).backgroundColor.endsWith(", 0.1)")
-            ) {
-                continue;
-            }
-            if (!isStarted) isStarted = true;
+        if (isStartAtSelectedJob && results.length >= maxTabsToOpen) {
+            break;
         }
 
-        const { jobCard, jobCardPre } = getJobCard(index, topDiv, paragraphsType);
+        const { jobCard, jobCardPre } = getJobCard(indexStart + i, topDiv, paragraphsType);
 
         if (jobCard.status === "Saved") {
             debug(`${jobCardPre} "Saved", skipping...`);
@@ -123,6 +119,24 @@ async function mainRecommend() {
     }
 
     return results;
+}
+
+function getIndexStart(isStartAtSelectedJob, topDivs) {
+    if (!isStartAtSelectedJob) return 0;
+
+    for (const [index, topDiv] of [...topDivs].entries()) {
+        if (
+            // for '/search/', '/collections/'
+            topDiv.classList.contains('jobs-search-results-list__list-item--active')
+            // for '/search-results/'
+            || getComputedStyle(topDiv.parentElement.parentElement)
+                .backgroundColor.endsWith(", 0.1)")
+        ) {
+            return index;
+        }
+    }
+    // no job card selected -> fall back to processing from the start
+    return 0;
 }
 
 function getTopDivs() {

@@ -19,13 +19,19 @@ await main()
     });
 
 async function main() {
+    if (['https://www.linkedin.com/preload/', 'about:blank'].includes(
+        document.location.href,
+    )) {
+        return; // silently ignore wrong `document` frames
+    }
+
     const allJobs = await mainExport()
         .catch((err) => {
             sendStatusToPopup(err.message, 'error');
             throw err;
         });
-    if (!allJobs) {
-        sendStatusToPopup("No jobs found", 'warning', 'export_done');
+    if (!allJobs.length) {
+        sendStatusToPopup("No jobs found", '', 'export_done');
         return;
     }
 
@@ -156,7 +162,7 @@ function getCompanySlug(card, companyText) {
     const normTextFromAlt = companyTextFromAlt.toLowerCase().replace(/[^\w]/g, '');
     const normText = companyText.toLowerCase().replace(/[^\w]/g, '');
     if (normTextFromAlt !== normText) {
-        sendStatusToPopup(`"${normText}" !== "${normTextFromAlt}"`, 'warning');
+        sendStatusToPopup(`"${normText}" !== "${normTextFromAlt}"`, 'validation_warning');
         debug(`[warn] (Page ${pageNum+1}) Mismatch: Alt("${normTextFromAlt}") !== Text("${normText}")`);
     }
     const companySlug = companyText

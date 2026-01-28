@@ -15,6 +15,12 @@ await main()
     });
 
 async function main() {
+    if (['https://www.linkedin.com/preload/', 'about:blank'].includes(
+        document.location.href,
+    )) {
+        return; // silently ignore wrong `document` frames
+    }
+
     if (window.__extInjectedObserverConnected && document.getElementById('ext-injected')) {
         debug("MutationObserver already connected, skipping mainHighlights()...")
         sendStatusToPopup(`Highlights already enabled`, '', 'highlights_done');
@@ -27,7 +33,7 @@ async function main() {
             throw err;
         });
     if (!result) {
-        debug("Wrong `document`, skipping frame...", '', 'highlights_done');
+        debug("Wrong `document`, skipping frame...", 'warning', 'highlights_done');
         return;
     }
 
@@ -197,6 +203,10 @@ function getInjectedDivStyle() {
     const sleep = () => new Promise(r => setTimeout(r, CONFIG.DEBOUNCE_MS * (CONFIG.DEBOUNCE_COUNT/2)));
     const connectObserver = () => {
         const injectedDiv = document.getElementById('ext-injected');
+        if (!injectedDiv) {
+            debug("'ext-injected' removed before MutationObserver disconnected, skipping...", 'warning');
+            return;
+        }
         observer.observe(injectedDiv.parentElement, { childList: true, subtree: true });
     }
     const observer = new MutationObserver(async () => {
