@@ -27,14 +27,17 @@ The workhorse of the extension. As you browse LinkedIn job search results (two-p
 
 A readily-available tool that injects filtered highlights into any LinkedIn job page you're viewing. Provides the same context injection that Recommend Jobs offers, but for single-job manual review.
 
-<img src="https://i.imgur.com/yxre3sh.png" width="640" alt="Screenshot of exported Excel spreadsheet">
+<img width="640" alt="Screen capture of Chrome Extension" src="https://github.com/user-attachments/assets/29e0b84e-b4c7-4fcd-97a5-659bdca80980" loop />
 
-<br>
+&nbsp;<br>
 
-<img src="https://i.imgur.com/h4TUJnY.gif" width="320" alt="Screen capture of Chrome Extension popup">
+<img width="640" alt="Screenshot of exported Excel spreadsheet" src="https://github.com/user-attachments/assets/6c7e999a-7653-4f7e-9e75-25a592be41e1" />
 
-<!-- TODO: Add screenshots showing Recommend Jobs feature with company context injection -->
-<!-- TODO: Add screenshot showing Job Highlights on a job description page -->
+&nbsp;<br>
+
+<img width="320" alt="Screen capture of Chrome Extension" src="https://github.com/user-attachments/assets/935753f8-9906-4090-9f1a-b0bf1aa11daf" loop />
+
+&nbsp;<br>
 
 ## Getting Started
 

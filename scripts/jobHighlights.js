@@ -109,7 +109,10 @@ async function mainHighlights() {
 </div>
 `;
 
-    document.getElementById('ext-injected')?.remove();
+    const injectedDiv = document.getElementById('ext-injected');
+    // on '/search-results/', observer triggers on page scroll
+    if (injectedDiv?.innerHTML === injectedDivHTML) return true;
+    injectedDiv?.remove();
     (
         // for '/search/' ✅, '/collections/' ✅ (grandparent of '/view/' selector)
         document.querySelector('.job-details-jobs-unified-top-card__container--two-pane')
@@ -125,6 +128,7 @@ async function mainHighlights() {
     const elem = document.getElementById('ext-injected');
     const finalHeight = elem.offsetHeight;
     elem.style.height = '0';
+    elem.getBoundingClientRect(); // register initial state
     elem.style.visibility = 'visible';
     requestAnimationFrame(() => {
         elem.style.height = `${finalHeight}px`;
@@ -152,7 +156,7 @@ function getInjectedDivStyle() {
     #ext-injected {
         /* transition effect */
         height: auto;
-        transition: height 0.7s ease-out;
+        transition: height 0.8s ease-out;
         visibility: hidden;
 
         border: 2px solid #AA6C39;
@@ -204,7 +208,7 @@ function getInjectedDivStyle() {
     const connectObserver = () => {
         const injectedDiv = document.getElementById('ext-injected');
         if (!injectedDiv) {
-            debug("'ext-injected' removed before MutationObserver disconnected, skipping...", 'warning');
+            debug("'ext-injected' removed before MutationObserver disconnected, skipping...", 'validation-warning');
             return;
         }
         observer.observe(injectedDiv.parentElement, { childList: true, subtree: true });

@@ -35,6 +35,7 @@
         "run_at": "document_idle"
     }],
     "host_permissions": [
-        "https://www.linkedin.com/company/*/jobs*"
+        "https://www.linkedin.com/company/*/jobs*",
+        "https://app.zipcodebase.com/*"
     ]
 }

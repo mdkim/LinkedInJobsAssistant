@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ext-closePopupBtn').addEventListener('click', () => {
         window.close();
     });
+    document.getElementById('ext-settingsBtn').addEventListener('click', () => {
+        chrome.tabs.create({ url: chrome.runtime.getURL('popup/settings.html') });
+    });
 
     document.getElementById('ext-exportBtn').addEventListener('click', () => {
         handleExportClick().catch((err) => {
